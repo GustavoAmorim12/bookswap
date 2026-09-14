@@ -1,0 +1,24 @@
+services:
+  mock-server:
+    build:
+      context: ./mock-server
+    container_name: bookswap-mock-server
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      args:
+        # dentro da rede do Docker o front conversa com o serviço "mock-server"
+        # pelo nome do serviço; do host (seu navegador), a URL pública continua
+        # sendo localhost:4000, então usamos essa aqui (o build roda no host,
+        # não dentro da rede compose)
+        VITE_API_URL: http://localhost:4000
+    container_name: bookswap-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - mock-server
+    restart: unless-stopped

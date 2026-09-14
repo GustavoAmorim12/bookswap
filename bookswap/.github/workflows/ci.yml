@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Lint, typecheck e build do front-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Usa "npm install" em vez de "npm ci" porque o projeto ainda não
+      # tem package-lock.json commitado. Depois de rodar `npm install`
+      # localmente pela primeira vez, commitem o lockfile gerado e troquem
+      # este passo para "npm ci" (build mais rápido e 100% reprodutível).
+      - name: Instalar dependências
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc -b --noEmit
+
+      - name: Testes
+        run: npm run test
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: http://localhost:4000
+
+  mock-server:
+    name: Testes do mock server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Checar sintaxe
+        run: node --check mock-server/server.js
+
+      - name: Rodar testes
+        run: node --test mock-server/
+
+  docker-build:
+    name: Build das imagens Docker
+    runs-on: ubuntu-latest
+    needs: [frontend, mock-server]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build da imagem do front-end
+        run: docker build -t bookswap-web:ci .
+
+      - name: Build da imagem do mock server
+        run: docker build -t bookswap-mock-server:ci ./mock-server
